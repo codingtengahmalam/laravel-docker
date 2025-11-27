@@ -28,5 +28,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          dockerfile: docker/app/Dockerfile
           push: true
           tags: ghcr.io/${{ secrets.GHCR_USERNAME }}/laravel-docker:latest
