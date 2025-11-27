@@ -3,7 +3,7 @@ name: 🏗️ Build & Push Laravel Image to GHCR
 on:
   push:
     branches:
-      - main
+      - franken-php
 
 jobs:
   build:
