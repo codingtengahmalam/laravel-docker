@@ -5,12 +5,22 @@ use Laravel\Fortify\Features;
 use Livewire\Volt\Volt;
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->json([
+        'message' => 'Hello, world!',
+        'status' => 'success',
+        'data' => [
+            'name' => 'John Doe',
+            'email' => 'john.doe@example.com',
+        ],
+    ]);
+
+
 })->name('home');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
