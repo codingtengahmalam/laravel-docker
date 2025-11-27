@@ -1,0 +1,67 @@
+version: '3.8'
+
+# UID/GID Configuration
+# Set these values to match your host user to avoid permission issues
+# Get your UID/GID with: id -u && id -g
+# Default: 1000:1000 (common for most Linux systems)
+# Usage: PUID=1000 PGID=1000 docker-compose -f docker-compose.staging.yml up -d
+
+services:
+  app:
+    image: ghcr.io/codingtengahmalam/laravel-docker:latest
+    container_name: app
+    restart: unless-stopped
+    env_file:
+      - .env
+    # Use the same UID/GID for both containers to avoid permission conflicts
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - app-storage:/app/storage
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - laravel
+
+  queue:
+    image: ghcr.io/codingtengahmalam/laravel-docker:latest
+    container_name: queue
+    restart: unless-stopped
+    env_file:
+      - .env
+    # Use the same UID/GID as app container
+    command: ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+    volumes:
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+      - app-storage:/app/storage
+    depends_on:
+      - redis
+      - app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - laravel
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: redis
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD:-secret}"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - laravel
+
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  app-storage:
+    driver: local
