@@ -13,8 +13,6 @@ Route::get('/', function () {
             'email' => 'john.doe@example.com',
         ],
     ]);
-
-
 })->name('home');
 
 Route::view('dashboard', 'dashboard')
