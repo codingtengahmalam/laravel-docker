@@ -1,59 +1,51 @@
-FROM php:8.2-fpm
+FROM dunglas/frankenphp:php8.3
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    supervisor \
-    cron \
-    libpq-dev
+WORKDIR /app
 
-# Install Node.js & npm
-RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+# Install Node.js 20 + npm + PHP extensions + Composer + Supervisor
+RUN apt-get update && apt-get install -y curl gnupg supervisor && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    install-php-extensions \
+        @composer \
+        pdo_pgsql \
+        gd \
+        intl \
+        zip \
+        opcache \
+        bcmath \
+        exif \
+        pcntl \
+        sodium \
+        redis && \
+    mkdir -p /var/log/supervisor && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
+    SERVER_NAME=":8000"
 
-# Install PHP extensions untuk PostgreSQL
-RUN apt-get update && apt-get install -y libicu-dev && \
-    docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip xml intl
+# Copy all application files
+COPY . .
 
-# Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+# Install PHP & Node dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+RUN npm install && npm run build
 
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Supervisor config
+RUN mkdir -p /etc/supervisor/conf.d
+COPY docker/supervisor/queue-and-scheduler.conf /etc/supervisor/conf.d/queue-and-scheduler.conf
 
-# Copy scheduler script
-COPY docker/app/start-scheduler.sh /usr/local/bin/start-scheduler.sh
-RUN chmod +x /usr/local/bin/start-scheduler.sh
+# Create supervisord.conf
+RUN echo "[supervisord]" > /etc/supervisor/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisor/supervisord.conf && \
+    echo "logfile=/var/log/supervisor/supervisord.log" >> /etc/supervisor/supervisord.conf && \
+    echo "pidfile=/var/run/supervisord.pid" >> /etc/supervisor/supervisord.conf && \
+    echo "" >> /etc/supervisor/supervisord.conf && \
+    echo "[include]" >> /etc/supervisor/supervisord.conf && \
+    echo "files = /etc/supervisor/conf.d/*.conf" >> /etc/supervisor/supervisord.conf
 
-# Create start script for queue worker
-RUN echo '#!/bin/sh\n\
-exec supervisord -c /etc/supervisor/supervisord.conf' > /usr/local/bin/start-queue.sh && chmod +x /usr/local/bin/start-queue.sh
+# Jangan generate key di tahap build — sebaiknya via ENV atau entrypoint
+# RUN php artisan key:generate
 
-# Set working directory
-WORKDIR /var/www/html
-
-# Salin kode aplikasi
-COPY . /var/www/html
-
-# Note: npm install, composer install, npm run build, and storage:link 
-# are handled in entrypoint.sh for better flexibility
-
-# Copy entrypoint script
-COPY docker/app/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Use entrypoint
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Set default command to php-fpm (untuk app container)
-CMD ["php-fpm"]
+EXPOSE 8000
+CMD ["php", "artisan", "octane:frankenphp", "--host=0.0.0.0", "--port=8000"]

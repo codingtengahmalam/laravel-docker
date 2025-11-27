@@ -1,83 +1,43 @@
-services:
-  # Nginx service
-  nginx:
-    build:
-      context: ./docker/nginx
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8080"
-      - "4433:4433"
-    volumes:
-      - ./:/var/www/html
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d
-      - ./docker/nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - app
-    restart: unless-stopped
-    networks:
-      - laravel-network
+services:  # Nginx service
 
   # Laravel application
   app:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+    container_name: web-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8000"
     volumes:
-      - ./:/var/www/html
-      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-      - ./storage:/var/www/html/storage
+      - ./storage:/app/storage
     depends_on:
       - redis
-    restart: unless-stopped
-    environment:
-      - TZ=Asia/Jakarta
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - laravel-network
-      # Queue worker dengan supervisor (menggunakan image yang sama dengan app)
 
   queue:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+    container_name: web-app-queue
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
     volumes:
-      - ./:/var/www/html
-      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-      - ./docker/supervisor/worker.conf:/etc/supervisor/conf.d/worker.conf
-      - ./storage:/var/www/html/storage
-    command: [ "supervisord", "-c", "/etc/supervisor/supervisord.conf", "-n" ]
+      - ./storage:/app/storage
     depends_on:
       - redis
       - app
-    restart: unless-stopped
-    environment:
-      - TZ=Asia/Jakarta
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
       - laravel-network
-
-  #scheduler
-  scheduler:
-    build:
-      context: .
-      dockerfile: docker/app/Dockerfile
-    volumes:
-      - ./:/var/www/html
-      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
-      - ./storage:/var/www/html/storage
-    command: /usr/local/bin/start-scheduler.sh
-    depends_on:
-      - app
-    restart: unless-stopped
-    environment:
-      - TZ=Asia/Jakarta
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - laravel-network
-
   # Redis
   redis:
     image: redis:7.4-alpine
