@@ -8,6 +8,18 @@
 
 Repository ini berisi aplikasi contoh untuk bab **Deployment** dari ebook _Laravel Best Practice_. Cocok buat kamu yang mau belajar cara deploy aplikasi Laravel 12 + Livewire dengan Docker, atau sekadar ingin menjalankan project ini di lokal.
 
+## Pilihan Stack Runtime
+
+Repository ini menyediakan dua opsi stack runtime yang bisa kamu pilih sesuai kebutuhan:
+
+- **PHP FPM** - Stack tradisional menggunakan PHP-FPM dengan Nginx  
+  → Gunakan branch **[`main`](https://github.com/codingtengahmalam/laravel-docker/tree/main)**
+
+- **Franken PHP** - Stack modern menggunakan Franken PHP (application server built-in)  
+  → Gunakan branch **[`franken-php`](https://github.com/codingtengahmalam/laravel-docker/tree/franken-php)**
+
+> 💡 **Tips**: Jika kamu belum yakin pilih yang mana, gunakan branch `main` (PHP FPM) untuk setup yang lebih familiar dan stabil.
+
 ## Tentang Project
 
 Project ini menggunakan:
